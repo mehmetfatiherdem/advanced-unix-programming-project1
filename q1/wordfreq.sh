@@ -27,31 +27,9 @@ numOfWords=0
 # exclude the numbers, articles,prepositions, and conjunctions (e.g., "the", "and", "of").
 exclude="the and of a an in on to for with by as at from into through over under above below between among around behind beside down during except inside near off out outside since until upon within without"
 
-specialChars="!@#$%^&*()_+{}|:<>?[]\;',./"
-
 ## read the file word by word
-for word in $(cat $1)
+for word in `cat $1 | grep -o -E '\w+'`
 do
-   
-    ## remove the special characters at the end of the word
-    for (( i=0; i<${#specialChars}; i++ ))
-    do      
-        if [[ "${word:${#word}-1}" == "${specialChars:$i:1}" ]]
-        then
-            word=${word:0:${#word}-1}
-        fi
-    done
-
-    ## remove the possesive and negative postfix
-    if [[ "${word:${#word}-2:2}" == "'s" ]]
-    then
-        word=${word:0:${#word}-2}
-    fi
-
-    #numOfWords=$[$numOfWords+1]
-    #total=$[$total+${#word}]
-
-    #echo "Word: $word total so far: $total numOfWords: $numOfWords"
 
     ## exclude the words in the exclude list
     if [[ $(echo $exclude | grep -i $word) ]]
