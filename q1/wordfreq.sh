@@ -2,6 +2,7 @@
 
 ## check if the user specified a file
 ## if not, read from standard input
+
 if [[ $# -eq 0 ]]
 then
     echo "Enter the text, Ctrl-D to end: "
@@ -42,15 +43,15 @@ do
     done
 
     ## remove the possesive and negative postfix
-    if [[ "${word:${#word}-2:1}" == "'" ]]
+    if [[ "${word:${#word}-2:2}" == "'s" ]]
     then
         word=${word:0:${#word}-2}
     fi
 
-    numOfWords=$[$numOfWords+1]
-    total=$[$total+${#word}]
+    #numOfWords=$[$numOfWords+1]
+    #total=$[$total+${#word}]
 
-    #echo -n "$word "
+    #echo "Word: $word total so far: $total numOfWords: $numOfWords"
 
     ## exclude the words in the exclude list
     if [[ $(echo $exclude | grep -i $word) ]]
@@ -114,14 +115,18 @@ do
     then
         echo "${wordsArr[$i]} ${freqArr[$i]}"
         echo "${wordsArr[$i]} ${freqArr[$i]}" >> output.txt
+        numOfWords=$[$numOfWords+${freqArr[$i]}]
+        total=$[$total+${#wordsArr[$i]}*${freqArr[$i]}]
     fi
 done
+
 
 echo
 echo >> output.txt
 
 ## print average word length
-
+echo "Total number of words: $numOfWords"
+echo "total word length: $total"
 average=$(echo "scale=2; $total / $numOfWords" | bc)
 
 echo "Average Word Length: $average"

@@ -6,7 +6,7 @@ lazy 20
 dog 20
 barks 3
 
-Average Word Length: 4.37
+Average Word Length: 4.02
 
 Histogram of Word Frequencies:
 brown	********************
