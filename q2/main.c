@@ -4,89 +4,155 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-#define MAX_DIGITS 10
+#define BUF_SIZE 100
 
-int main(int argc, char *argv[]) {
-  if (argc != 2) {
-    fprintf(stderr, "Usage: %s <number_of_processes>\n", argv[0]);
-    exit(1);
-  }
-
-  int num_processes = atoi(argv[1]);
-
-  int pipes[2 * num_processes]; // Array of pipes for communication
-  int i, status;
-
-  // Create pipes
-  for (i = 0; i < num_processes; ++i) {
-    if (pipe(pipes + 2 * i) == -1) {
-      perror("pipe");
-      exit(1);
+int addLastTwoNumbers(char* buf){
+    int len = strlen(buf);
+    if(len == 3){
+        return 2;
     }
-  }
-
-  // Create child processes
-  for (i = 0; i < num_processes; ++i) {
-    pid_t pid = fork();
-    if (pid == -1) {
-      perror("fork");
-      exit(1);
-    } else if (pid == 0) { // Child process
-      char prev1[MAX_DIGITS], prev2[MAX_DIGITS];
-      int n1, n2;
-
-      if (i == 0) { // First child (parent process writes initial values)
-        close(pipes[1]); // Close write end of first pipe
-        read(STDIN_FILENO, prev1, sizeof(prev1));
-        read(STDIN_FILENO, prev2, sizeof(prev2));
-        n1 = atoi(prev1);
-        n2 = atoi(prev2);
-        printf("Process %d: %d %d\n", getpid(), n1, n2);
-      } else { // Other child processes
-        close(pipes[2 * i - 1]); // Close read end of previous pipe
-        read(pipes[2 * i - 2], prev1, sizeof(prev1));
-        read(pipes[2 * i - 2], prev2, sizeof(prev2));
-        n1 = atoi(prev1);
-        n2 = atoi(prev2);
-      }
-
-      int next = n1 + n2;
-      close(pipes[2 * i]);  // Close read end of current pipe
-      if (i == num_processes - 1) { // Last child, write to stdout
-        printf("Process %d: %d %d %d\n", getpid(), n1, n2, next);
-      } else { // Write to next pipe
-        sprintf(prev1, "%d", n2);
-        sprintf(prev2, "%d", next);
-        write(pipes[2 * i + 1], prev1, sizeof(prev1));
-        write(pipes[2 * i + 1], prev2, sizeof(prev2));
-      }
-
-      fprintf(stderr, "Process %d: Fibonacci (%d) : %d\n", getpid(), num_processes, next);
-      exit(0);
+    int i = len - 1;
+    while(buf[i] != ' '){
+        i--;
     }
-  }
-
-  // Parent process
-  close(pipes[1]); // Close write end of first pipe (after writing)
-  char num1[MAX_DIGITS] = "1";
-  char num2[MAX_DIGITS] = "1";
-  write(pipes[0], num1, sizeof(num1)); // Write initial values to first pipe
-  write(pipes[0], num2, sizeof(num2));
-  
-  // Wait for all child processes to finish
-  for (i = 0; i < num_processes; ++i) {
-    wait(&status);
-  }
-
-  // Read final result from last child's pipe (written to stdout by last child)
-  read(pipes[1], num1, sizeof(num1));
-
-  fprintf(stderr, "Parent: Fibonacci (%d) : %s\n", num_processes, num1);
-
-  // Close remaining pipes
-  for (i = 0; i < 2 * num_processes; ++i) {
-    close(pipes[i]);
-  }
-
-  return 0;
+    int last = atoi(&buf[i+1]);
+    i--;
+    while(buf[i] != ' '){
+        i--;
+    }
+    int secondLast = atoi(&buf[i+1]);
+    return last + secondLast;
 }
+
+int getLastNumber(char* buf){
+    int i = strlen(buf)-1;
+    while(buf[i] != ' '){
+        i--;
+    }
+    return atoi(&buf[i+1]);
+}
+
+char* appendToBuf(char* buf, int num){
+    char temp[BUF_SIZE];
+    sprintf(temp, "%d", num);
+    strcat(buf, " ");
+    strcat(buf, temp);
+    return buf;
+
+}
+
+int main(int argc, char *argv[]){
+
+    char buf[BUF_SIZE];
+
+    ssize_t cnt;
+
+    int childpid;
+
+    int numOfProcesses = atoi(argv[1]);
+
+    int pipeArray[numOfProcesses][2];
+
+    sprintf(buf, "1 1");
+
+    cnt = strlen(buf);
+
+    printf("Process %d: %d %d\n", getpid(), 1, 1);
+
+    for(int i=0; i<numOfProcesses; i++){
+        if(pipe(pipeArray[i]) == -1){
+            printf("Error creating pipe %d\n", i);
+            return 1;
+        }
+    }
+
+
+    if(write(pipeArray[0][1], buf, cnt) != cnt){
+        printf("Error writing to pipe 0\n");
+        return 3;
+    }
+    
+
+    int i;
+
+    for(i=0; i<numOfProcesses-1; i++){
+        
+        if((childpid = fork()) == -1){
+            printf("Error creating child process %d\n", i);
+            return 4;
+        }
+
+        if(childpid > 0){
+            if(close(pipeArray[i][0]) == -1){
+                printf("Error closing read end of pipe 0\n");
+                return 2;
+            }
+            
+        }
+
+        else if(childpid == 0){
+
+            if(close(pipeArray[i][1]) == -1){
+                printf("Error closing write end of pipe %d\n", i);
+                return 5;
+
+            }
+
+            while((cnt = read(pipeArray[i][0], buf, BUF_SIZE)) > 0){
+
+                int currFibonacci = addLastTwoNumbers(buf);
+
+                // add curr fibonacci to the buffer
+                appendToBuf(buf, currFibonacci);
+
+                cnt = strlen(buf);
+
+                printf("Process %d: %s\n", getpid(), buf);
+
+                if(i==2){
+                    if(close(pipeArray[i+1][0]) == -1){
+                        printf("Error closing read end of pipe %d\n", i+1);
+                        return 8;
+                    }
+                }
+
+                if(write(pipeArray[i+1][1], buf, cnt) != cnt){
+                    printf("Error writing to pipe %d\n", i+1);
+                    return 6;
+
+                   
+                }
+
+                if(close(pipeArray[i][0]) == -1){
+                    printf("Error closing read end of pipe %d\n", i);
+                    return 8;
+                }
+
+            }
+
+            return 42;
+        }
+    }
+
+    // wait for all the children to finish
+
+    while(wait(NULL) > 0);
+        
+    if(close(pipeArray[numOfProcesses-1][1]) == -1){
+        printf("Error closing write end of pipe %d\n", numOfProcesses-1);
+        return 9;
+    }
+        
+    while((cnt = read(pipeArray[numOfProcesses-1][0], buf, BUF_SIZE)) > 0){
+        printf("Process %d: Fibonacci (%d) : %d\n", getpid(), numOfProcesses, getLastNumber(buf));
+        if(close(pipeArray[numOfProcesses-1][0]) == -1){
+            printf("Error closing read end of pipe %d\n", numOfProcesses-1);
+            return 10;
+        }
+    }
+
+    if(cnt == -1) return 100;
+    
+    return 0;
+}
+

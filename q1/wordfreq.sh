@@ -103,8 +103,6 @@ echo
 echo >> output.txt
 
 ## print average word length
-echo "Total number of words: $numOfWords"
-echo "total word length: $total"
 average=$(echo "scale=2; $total / $numOfWords" | bc)
 
 echo "Average Word Length: $average"
@@ -118,7 +116,11 @@ echo "Histogram of Word Frequencies:" >> output.txt
 
 ## print the histogram
 for (( i=0; i<$top; i++ ))
-do
+do  
+    if [[ ${freqArr[$i]} -lt $th ]]
+    then
+        continue
+    fi
     echo -n -e "${wordsArr[$i]}\t"
     echo -n -e "${wordsArr[$i]}\t" >> output.txt
 
